@@ -1,5 +1,7 @@
 import tensorflow as tf
 from tensorflow.contrib import rnn
+from tensorflow.contrib import seq2seq
+from tensorflow.python.layers import core as layers_core
 
 from data_utils import iterator_utils
 
@@ -39,6 +41,37 @@ def get_encoder_outputs(iterator):
     return encoder_outputs, encoder_state
 
 
+def get_decoder_outputs(iterator, initial_state):
+    num_units = 20
+
+    with tf.variable_scope('embedding') as scope:
+        embedding_decoder = tf.get_variable('embedding_decoder', [tgt_vocab_size, tgt_embedding_size], dtype)
+
+        target = iterator.target
+
+        if time_major: target = tf.transpose(target)
+
+        decoder_emb_input = tf.nn.embedding_lookup(embedding_decoder, target)
+
+    decoder_cell = rnn.BasicLSTMCell(num_units=num_units)
+
+    helper = seq2seq.TrainingHelper(
+        decoder_emb_input, iterator.target_length, time_major=True
+    )
+
+    projection_layer = layers_core.Dense(tgt_vocab_size, use_bias=False)
+
+    decoder = seq2seq.BasicDecoder(
+        decoder_cell, helper, initial_state, output_layer=projection_layer
+    )
+
+    outputs, _, _ = seq2seq.dynamic_decode(decoder)
+
+    logits = outputs.rnn_output
+
+    return logits
+
+
 if __name__ == '__main__':
     params = {
         'src_file': 'data_utils/source.txt',
@@ -51,6 +84,8 @@ if __name__ == '__main__':
 
     enc_outputs, enc_state = get_encoder_outputs(iterator)
 
+    logits = get_decoder_outputs(iterator, enc_state)
+
     with tf.Session() as sess:
         iterator.initializer.run()
         tf.tables_initializer().run()
@@ -58,3 +93,6 @@ if __name__ == '__main__':
 
         outputs = sess.run(enc_outputs)
         print(outputs.shape)
+
+        _logit = sess.run(logits)
+        print(_logit.shape)
