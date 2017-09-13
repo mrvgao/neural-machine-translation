@@ -8,10 +8,13 @@ from data_utils import table_utils
 unk = '*'
 sos = '.'
 eos = '-'
-eos_id = 1
+unk_id = 0
+sos_id = 1
+eos_id = 2
 
 BatchedInput = collections.namedtuple(
-    'BatchedInput', ['target', 'target_length', 'source', 'source_length', 'initializer'])
+    'BatchedInput', ['target_input', 'target_length', 'source', 'source_length',
+                     'initializer', 'target_output'])
 
 
 def get_iterator(src_file, tgt_file, src_vocab_file, tgt_vocab_file):
@@ -24,35 +27,53 @@ def get_iterator(src_file, tgt_file, src_vocab_file, tgt_vocab_file):
     src_table, tgt_table = table_utils.create_vocab_tables(src_vocab_file=src_file, tgt_vocab_file=tgt_file)
 
     source_dataset = source_dataset.map(lambda string: tf.string_split([string]).values)
-    source_dataset = source_dataset.map(lambda words: (words, tf.size(words)))
-    source_dataset = source_dataset.map(lambda words, size: (src_table.lookup(words), size))
+    source_dataset = source_dataset.map(lambda words,: tf.cast(src_table.lookup(words), tf.int32))
 
     target_dataset = target_dataset.map(lambda string: tf.string_split([string]).values)
-    target_dataset = target_dataset.map(lambda words: (words, tf.size(words)))
-    target_dataset = target_dataset.map(lambda words, size: (tgt_table.lookup(words), size))
+    target_dataset = target_dataset.map(lambda words: tf.cast(tgt_table.lookup(words), tf.int32))
 
     source_target_dataset = tf_data.Dataset.zip((source_dataset, target_dataset))
 
     # TODO<minquan>: Add similar size batched.
 
+    source_target_dataset = source_target_dataset.map(
+        lambda src, tgt: (src, [sos_id] + tgt, tgt + [eos_id]),
+        num_threads=8
+    )
+
+    source_target_dataset = source_target_dataset.map(
+        lambda src, tgt_in, tgt_out: (src, tgt_in, tgt_out, tf.size(src), tf.size(tgt_in))
+    )
+
     batch_size = 256
 
     batched_dataset = source_target_dataset.padded_batch(
         batch_size,
-        padded_shapes=((tf.TensorShape([None]), tf.TensorShape([])),
-                       (tf.TensorShape([None]), tf.TensorShape([]))),
-        padding_values=((tf.cast(eos_id, tf.int64), 0),
-                        (tf.cast(eos_id, tf.int64), 0))
+        padded_shapes=(
+            tf.TensorShape([None]),
+            tf.TensorShape([None]),
+            tf.TensorShape([None]),
+            tf.TensorShape([]),
+            tf.TensorShape([]),
+        ),
+
+        padding_values=(
+            eos_id,
+            eos_id,
+            eos_id,
+            0,
+            0)
     )
 
     batched_iterator = batched_dataset.make_initializable_iterator()
 
-    ((source, source_length), (target, target_length)) = batched_iterator.get_next()
+    source, target_input, target_output, source_length, target_length = batched_iterator.get_next()
 
     return BatchedInput(initializer=batched_iterator.initializer,
                         source=source,
                         source_length=source_length,
-                        target=target,
+                        target_input=target_input,
+                        target_output=target_output,
                         target_length=target_length)
 
 
