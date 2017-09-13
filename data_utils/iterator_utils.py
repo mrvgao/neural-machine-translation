@@ -1,3 +1,5 @@
+import collections
+
 import tensorflow as tf
 from tensorflow.contrib import data as tf_data
 
@@ -7,6 +9,9 @@ unk = '*'
 sos = '.'
 eos = '-'
 eos_id = 1
+
+BatchedInput = collections.namedtuple(
+    'BatchedInput', ['target', 'target_length', 'source', 'source_length', 'initializer'])
 
 
 def get_iterator(src_file, tgt_file, src_vocab_file, tgt_vocab_file):
@@ -44,19 +49,23 @@ def get_iterator(src_file, tgt_file, src_vocab_file, tgt_vocab_file):
 
     ((source, source_length), (target, target_length)) = batched_iterator.get_next()
 
-    return batched_iterator, source, source_length, target, target_length
+    return BatchedInput(initializer=batched_iterator.initializer,
+                        source=source,
+                        source_length=source_length,
+                        target=target,
+                        target_length=target_length)
 
 
 if __name__ == '__main__':
-    _batched_iterator, _source, _source_length, _target, _target_length = get_iterator(
+    batch_input = get_iterator(
         src_file='source.txt', src_vocab_file='source_vocab.txt',
         tgt_file='target.txt', tgt_vocab_file='target_vocab.txt'
     )
 
     with tf.Session() as sess:
         tf.tables_initializer().run()
-        _batched_iterator.initializer.run()
-        src, src_length = sess.run([_source, _source_length])
+        batch_input.initializer.run()
+        src, src_length = sess.run([batch_input.source, batch_input.source_length])
 
         print(src[:10])
         print(src_length[:10])
