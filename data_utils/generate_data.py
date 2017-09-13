@@ -1,0 +1,4 @@
+"""
+Generate the training data.
+"""
+
