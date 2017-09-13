@@ -5,6 +5,9 @@ from data_utils import table_utils
 source_eos = '.'
 target_eos = '-'
 
+source_eos_id = 2
+target_eos_id = 2
+
 source_dataset = tf_data.TextLineDataset('source.txt')
 target_dataset = tf_data.TextLineDataset('target.txt')
 
@@ -27,8 +30,10 @@ batch_size = 256
 
 batched_dataset = source_target_dataset.padded_batch(
     batch_size,
-    padded_shapes=((tf.TensorShape([None]), tf.TensorShape([])), (tf.TensorShape([None])), tf.TensorShape([])),
-    padding_values=((source_eos, 0), (target_eos, 0))
+    padded_shapes=((tf.TensorShape([None]), tf.TensorShape([])),
+                   (tf.TensorShape([None]), tf.TensorShape([]))),
+    padding_values=((tf.cast(source_eos_id, tf.int64), 0),
+                    (tf.cast(target_eos_id, tf.int64), 0))
 )
 
 batched_iterator = batched_dataset.make_initializable_iterator()
