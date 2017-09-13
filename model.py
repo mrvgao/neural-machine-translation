@@ -167,6 +167,7 @@ if __name__ == '__main__':
         for epoch in range(num_epoch):
             iterator.initializer.run()
 
+            print('epoch ---- {} ---- epoch'.format(epoch))
             index = 0
             while True:
                 try:
