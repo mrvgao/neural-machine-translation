@@ -39,6 +39,7 @@ next_element = batch_iterator.get_next()
 
 with tf.Session() as sess:
     sess.run(batch_iterator.initializer, feed_dict={src_strings: test_batch})
+
     while True:
         try:
             string, length = sess.run(next_element)
