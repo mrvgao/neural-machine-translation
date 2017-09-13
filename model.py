@@ -140,7 +140,7 @@ if __name__ == '__main__':
         learning_rate=1e-3,
         batch_size=128,
         max_gradient_norm=5,
-        num_units=256,
+        num_units=50,
         attention=True
     )
 
@@ -159,14 +159,19 @@ if __name__ == '__main__':
     seq2seq_model.compute_loss()
     seq2seq_model.optimize()
 
+    num_epoch = 10
     with tf.Session() as sess:
-        iterator.initializer.run()
         tf.tables_initializer().run()
         tf.global_variables_initializer().run()
 
-        while True:
-            try:
-                loss, _ = sess.run([seq2seq_model.loss, seq2seq_model.update_step])
-                print(loss)
-            except tf.errors.OutOfRangeError:
-                break
+        for epoch in range(num_epoch):
+            iterator.initializer.run()
+
+            index = 0
+            while True:
+                try:
+                    loss, _ = sess.run([seq2seq_model.loss, seq2seq_model.update_step])
+                    if index % 50 == 0: print('epoch: {}, loss: {}'.format(epoch, loss))
+                    index += 1
+                except tf.errors.OutOfRangeError:
+                    break
