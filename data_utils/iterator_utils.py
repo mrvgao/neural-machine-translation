@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow.contrib import data as tf_data
+
 from data_utils import table_utils
 
 unk = '*'
@@ -47,16 +48,15 @@ def get_iterator(src_file, tgt_file, src_vocab_file, tgt_vocab_file):
 
 
 if __name__ == '__main__':
-
-    batched_iterator, source, source_length, target, target_length = get_iterator(
+    _batched_iterator, _source, _source_length, _target, _target_length = get_iterator(
         src_file='source.txt', src_vocab_file='source_vocab.txt',
         tgt_file='target.txt', tgt_vocab_file='target_vocab.txt'
     )
 
     with tf.Session() as sess:
         tf.tables_initializer().run()
-        batched_iterator.initializer.run()
-        src, src_length = sess.run([source, source_length])
+        _batched_iterator.initializer.run()
+        src, src_length = sess.run([_source, _source_length])
 
         print(src[:10])
         print(src_length[:10])
