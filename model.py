@@ -1,5 +1,6 @@
 import os
 from collections import namedtuple
+from datetime import datetime
 
 import tensorflow as tf
 from tensorflow.contrib import rnn
@@ -113,6 +114,9 @@ class Model:
 
         self.loss = tf.reduce_sum(crossent * target_weights) / tf.to_float(self.hps.batch_size)
 
+        tf.summary.scalar(name='seq2seq-loss', tensor=self.loss)
+        self.merged = tf.summary.merge_all()
+
     def optimize(self):
         params = tf.trainable_variables()
         gradients = tf.gradients(self.loss, params)
@@ -162,9 +166,15 @@ if __name__ == '__main__':
     num_epoch = 10
     epoch = 0
     with tf.Session() as sess:
+        now = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        logdir = 'tf-log'
+
+        summary_writer = tf.summary.FileWriter("{}/run-{}".format(logdir, now))
+
         tf.tables_initializer().run()
         tf.global_variables_initializer().run()
 
+        total_steps = 0
         for epoch in range(num_epoch):
             print('epoch ---- {} ---- epoch'.format(epoch))
             iterator.initializer.run()
@@ -174,5 +184,10 @@ if __name__ == '__main__':
                     loss, _ = sess.run([seq2seq_model.loss, seq2seq_model.update_step])
                     if index % 10 == 0: print('epoch: {}, loss: {}'.format(epoch, loss))
                     index += 1
+
+                    if index % 50 == 0:
+                        l = sess.run(seq2seq_model.merged)
+                        summary_writer.add_summary(l, global_step=total_steps)
+                    total_steps += 1
                 except tf.errors.OutOfRangeError:
                     break
