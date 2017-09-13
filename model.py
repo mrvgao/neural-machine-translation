@@ -68,21 +68,21 @@ class Model:
 
         decoder_cell = rnn.BasicLSTMCell(num_units=self.hps.num_units)
 
-        decoder_cell = seq2seq.AttentionWrapper(
-            decoder_cell, attention_mechanism,
-            attention_layer_size=self.hps.num_units,
-            name='attention'
-        )
+        # decoder_cell = seq2seq.AttentionWrapper(
+        #     decoder_cell, attention_mechanism,
+        #     attention_layer_size=self.hps.num_units,
+        #     name='attention'
+        # )
 
-        decoder_initial_state = decoder_cell.zero_state(batch_size=self.hps.batch_size, dtype=dtype).clone(
-            cell_state=self.encoder_state
-        )
+        decoder_initial_state = decoder_cell.zero_state(batch_size=self.hps.batch_size, dtype=dtype)
 
         helper = seq2seq.TrainingHelper(
             self.decoder_emb_inp, iterator.target_length, time_major=True
         )
 
         projection_layer = layers_core.Dense(tgt_vocab_size, use_bias=False)
+
+        decoder_initial_state = self.encoder_state
 
         decoder = seq2seq.BasicDecoder(
             decoder_cell, helper, decoder_initial_state, output_layer=projection_layer
@@ -140,7 +140,7 @@ if __name__ == '__main__':
         learning_rate=1e-3,
         batch_size=128,
         max_gradient_norm=5,
-        num_units=50,
+        num_units=10,
         attention=True
     )
 
@@ -160,19 +160,18 @@ if __name__ == '__main__':
     seq2seq_model.optimize()
 
     num_epoch = 10
+    epoch = 0
     with tf.Session() as sess:
         tf.tables_initializer().run()
         tf.global_variables_initializer().run()
+        iterator.initializer.run()
 
-        for epoch in range(num_epoch):
-            iterator.initializer.run()
-
-            print('epoch ---- {} ---- epoch'.format(epoch))
-            index = 0
-            while True:
-                try:
-                    loss, _ = sess.run([seq2seq_model.loss, seq2seq_model.update_step])
-                    if index % 50 == 0: print('epoch: {}, loss: {}'.format(epoch, loss))
-                    index += 1
-                except tf.errors.OutOfRangeError:
-                    break
+        print('epoch ---- {} ---- epoch'.format(epoch))
+        index = 0
+        while True:
+            try:
+                loss, _ = sess.run([seq2seq_model.loss, seq2seq_model.update_step])
+                if index % 10 == 0: print('epoch: {}, loss: {}'.format(epoch, loss))
+                index += 1
+            except tf.errors.OutOfRangeError:
+                break
