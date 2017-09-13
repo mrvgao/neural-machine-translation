@@ -39,4 +39,4 @@ if __name__ == '__main__':
     print(generate_char())
     print(generate_seq(10))
 
-    generate_batches_seq(10000)
+    generate_batches_seq(1000000)

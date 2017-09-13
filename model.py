@@ -164,14 +164,15 @@ if __name__ == '__main__':
     with tf.Session() as sess:
         tf.tables_initializer().run()
         tf.global_variables_initializer().run()
-        iterator.initializer.run()
 
-        print('epoch ---- {} ---- epoch'.format(epoch))
-        index = 0
-        while True:
-            try:
-                loss, _ = sess.run([seq2seq_model.loss, seq2seq_model.update_step])
-                if index % 10 == 0: print('epoch: {}, loss: {}'.format(epoch, loss))
-                index += 1
-            except tf.errors.OutOfRangeError:
-                break
+        for epoch in range(num_epoch):
+            print('epoch ---- {} ---- epoch'.format(epoch))
+            iterator.initializer.run()
+            index = 0
+            while True:
+                try:
+                    loss, _ = sess.run([seq2seq_model.loss, seq2seq_model.update_step])
+                    if index % 10 == 0: print('epoch: {}, loss: {}'.format(epoch, loss))
+                    index += 1
+                except tf.errors.OutOfRangeError:
+                    break
