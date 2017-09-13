@@ -17,7 +17,7 @@ BatchedInput = collections.namedtuple(
                      'initializer', 'target_output'])
 
 
-def get_iterator(src_file, tgt_file, src_vocab_file, tgt_vocab_file):
+def get_iterator(src_file, tgt_file, src_vocab_file, tgt_vocab_file, batch_size):
     source_dataset = tf_data.TextLineDataset(src_file)
     target_dataset = tf_data.TextLineDataset(tgt_file)
 
@@ -44,8 +44,6 @@ def get_iterator(src_file, tgt_file, src_vocab_file, tgt_vocab_file):
     source_target_dataset = source_target_dataset.map(
         lambda src, tgt_in, tgt_out: (src, tgt_in, tgt_out, tf.size(src), tf.size(tgt_in))
     )
-
-    batch_size = 256
 
     batched_dataset = source_target_dataset.padded_batch(
         batch_size,
@@ -80,7 +78,8 @@ def get_iterator(src_file, tgt_file, src_vocab_file, tgt_vocab_file):
 if __name__ == '__main__':
     batch_input = get_iterator(
         src_file='source.txt', src_vocab_file='source_vocab.txt',
-        tgt_file='target.txt', tgt_vocab_file='target_vocab.txt'
+        tgt_file='target.txt', tgt_vocab_file='target_vocab.txt',
+        batch_size=128,
     )
 
     with tf.Session() as sess:
