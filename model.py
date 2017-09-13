@@ -144,7 +144,7 @@ if __name__ == '__main__':
         learning_rate=1e-3,
         batch_size=128,
         max_gradient_norm=5,
-        num_units=10,
+        num_units=128,
         attention=True
     )
 
