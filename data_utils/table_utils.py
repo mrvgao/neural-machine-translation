@@ -23,6 +23,7 @@ def check_vocab(vocab_file, sos=None, eos=None, unk=None):
         vocab_size += 3
 
         with open(vocab_file, 'w') as f:
+            print('add tokens before vocab file')
             for word in vocab:
                 f.write('%s\n' % word)
 
