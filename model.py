@@ -65,11 +65,23 @@ def get_decoder_outputs(iterator, initial_state):
         decoder_cell, helper, initial_state, output_layer=projection_layer
     )
 
+    time_axis = 0 if time_major else 1
+
+    max_time = target
+
+    target_weights = tf.sequence_mask(iterator.target_length, )
     outputs, _, _ = seq2seq.dynamic_decode(decoder)
 
     logits = outputs.rnn_output
 
     return logits
+
+
+def loss(decoder_outputs, logits):
+    crossent = tf.nn.sparse_softmax_cross_entropy_with_logits(
+        labels=decoder_outputs, logits=logits
+    )
+
 
 
 if __name__ == '__main__':
