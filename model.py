@@ -14,7 +14,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '4, 5, 6'
 src_vocab_size = 29  # 26 + 3
 tgt_vocab_size = 13  # 10 + 3
 
-src_embedding_size = 5
+src_embedding_size = 6
 tgt_embedding_size = 3
 
 dtype = tf.float32
