@@ -9,7 +9,7 @@ def generate_char():
     minval = 'a'
     maxval = 'z'
     value = random.randint(ord(minval), ord(maxval))
-    return chr(value), value
+    return chr(value), chr(value).upper()
 
 
 def generate_seq(length=10):
