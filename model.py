@@ -135,10 +135,10 @@ class Model:
 
 if __name__ == '__main__':
     hps = Hyperpamamters(
-        learning_rate=1e-6,
+        learning_rate=1e-5,
         batch_size=128,
         max_gradient_norm=1,
-        num_units=256,
+        num_units=10,
         attention=True
     )
 
