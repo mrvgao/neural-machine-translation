@@ -1,5 +1,6 @@
 import collections
 
+import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import data as tf_data
 
@@ -88,6 +89,13 @@ if __name__ == '__main__':
         tf.tables_initializer().run()
         batch_input.initializer.run()
         src, src_length = sess.run([batch_input.source, batch_input.source_length])
+        source = sess.run([batch_input.source])
+        target_input = sess.run([batch_input.target_input])
+        target_output = sess.run([batch_input.target_output])
+
+        print('source shape is {}'.format(np.array(source).shape))
+        print('target_input shape is {}'.format(np.array(target_input).shape))
+        print('target_output shape is {}'.format(np.array(target_output).shape))
 
         print(src[:10])
         print(src_length[:10])

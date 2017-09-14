@@ -11,11 +11,11 @@ from data_utils import iterator_utils
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '4, 5, 6'
 
-src_vocab_size = 29
-tgt_vocab_size = 15
+src_vocab_size = 31
+tgt_vocab_size = 31
 
 src_embedding_size = 10
-tgt_embedding_size = 8
+tgt_embedding_size = 10
 
 dtype = tf.float32
 
@@ -33,57 +33,51 @@ class Model:
         self.hps = hps
         self.__build_embedding__()
 
+        encoder_outputs, encoder_state = self.build_encode()
+        logits = self.build_decode(encoder_state)
+
+        self.loss, self.summary = self.compute_loss(logits)
+        self.update = self.optimize(self.loss)
+
     def __build_embedding__(self):
-        with tf.variable_scope('embedding') as scope:
-            embedding_encoder = tf.get_variable('embedding_encoder', [src_vocab_size, src_embedding_size], dtype)
-            embedding_decoder = tf.get_variable('embedding_decoder', [tgt_vocab_size, tgt_embedding_size], dtype)
+        with tf.variable_scope('embedding'):
+            embedding_encoder = tf.get_variable(
+                'embedding_encoder', [src_vocab_size, src_embedding_size], dtype)
+            embedding_decoder = tf.get_variable(
+                'embedding_decoder', [tgt_vocab_size, tgt_embedding_size], dtype)
 
         source = iterator.source
         target_input = iterator.target_input
 
-        if self.time_major:
-            source = tf.transpose(source)
-            target_input = tf.transpose(target_input)
-
         self.encoder_emb_inp = tf.nn.embedding_lookup(embedding_encoder, source)
         self.decoder_emb_inp = tf.nn.embedding_lookup(embedding_decoder, target_input)
 
-    def encode(self):
+        if self.time_major:
+            self.encoder_emb_inp = tf.transpose(self.encoder_emb_inp, [1, 0, 2])
+            self.decoder_emb_inp = tf.transpose(self.decoder_emb_inp, [1, 0, 2])
+
+    def build_encode(self):
         encoder_cell = rnn.BasicLSTMCell(num_units=self.hps.num_units)
 
         with tf.variable_scope('dynamic_seq2seq', dtype=dtype) as scope:
-            self.encoder_outputs, self.encoder_state = tf.nn.dynamic_rnn(
+            encoder_outputs, encoder_state = tf.nn.dynamic_rnn(
                 cell=encoder_cell, inputs=self.encoder_emb_inp,
                 sequence_length=iterator.source_length,
                 time_major=True,
                 dtype=dtype
             )
 
-    def decode(self):
-        attention_states = tf.transpose(self.encoder_outputs, [1, 0, 2])
+        return encoder_outputs, encoder_state
 
-        attention_mechanism = seq2seq.LuongAttention(
-            num_units=self.hps.num_units, memory=attention_states,
-            memory_sequence_length=self.iterator.source_length
-        )
+    def build_decode(self, encoder_state):
 
         decoder_cell = rnn.BasicLSTMCell(num_units=self.hps.num_units)
-
-        # decoder_cell = seq2seq.AttentionWrapper(
-        #     decoder_cell, attention_mechanism,
-        #     attention_layer_size=self.hps.num_units,
-        #     name='attention'
-        # )
-
-        decoder_initial_state = decoder_cell.zero_state(batch_size=self.hps.batch_size, dtype=dtype)
-
         helper = seq2seq.TrainingHelper(
             self.decoder_emb_inp, iterator.target_length, time_major=True
         )
-
         projection_layer = layers_core.Dense(tgt_vocab_size, use_bias=False)
 
-        decoder_initial_state = self.encoder_state
+        decoder_initial_state = encoder_state
 
         decoder = seq2seq.BasicDecoder(
             decoder_cell, helper, decoder_initial_state, output_layer=projection_layer
@@ -93,9 +87,9 @@ class Model:
 
         logits = outputs.rnn_output
 
-        self.logits = logits
+        return logits
 
-    def compute_loss(self):
+    def compute_loss(self, logits):
         target_output = self.iterator.target_output
 
         if self.time_major:
@@ -108,43 +102,43 @@ class Model:
         if self.time_major:
             target_weights = tf.transpose(target_weights)
 
-        crossent = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=target_output, logits=self.logits)
+        crossent = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=target_output, logits=logits)
 
         target_weights = tf.cast(target_weights, tf.float32)
 
-        self.loss = tf.reduce_sum(crossent * target_weights) / tf.to_float(self.hps.batch_size)
+        loss = tf.reduce_sum(crossent * target_weights) / tf.to_float(self.hps.batch_size)
 
-        tf.summary.scalar(name='seq2seq-loss', tensor=self.loss)
-        self.merged = tf.summary.merge_all()
+        tf.summary.scalar(name='seq2seq-loss', tensor=loss)
 
-    def optimize(self):
+        summary_merged = tf.summary.merge_all()
+
+        return loss, summary_merged
+
+    def optimize(self, loss):
         params = tf.trainable_variables()
-        gradients = tf.gradients(self.loss, params)
+        gradients = tf.gradients(loss, params)
         clipped_gradients, _ = tf.clip_by_global_norm(gradients, self.hps.max_gradient_norm)
 
         optimizer = tf.train.AdamOptimizer(learning_rate=self.hps.learning_rate)
 
-        self.update_step = optimizer.apply_gradients(zip(clipped_gradients, params))
+        op = optimizer.apply_gradients(zip(clipped_gradients, params))
 
-    def get_logits(self):
-        self.encode()
-        self.decode()
-
-    def train_batch(self):
-        self.compute_loss()
-        self.optimize()
+        return op
 
     def get_max_time(self, tensor):
         time_axis = 0 if self.time_major else 1
         return tensor.shape[time_axis].value or tf.shape(tensor)[time_axis]
 
+    def train(self, sess):
+        return sess.run([self.update, self.loss, self.summary])
+
 
 if __name__ == '__main__':
     hps = Hyperpamamters(
-        learning_rate=1e-3,
+        learning_rate=1e-6,
         batch_size=128,
-        max_gradient_norm=5,
-        num_units=128,
+        max_gradient_norm=1,
+        num_units=256,
         attention=True
     )
 
@@ -159,35 +153,34 @@ if __name__ == '__main__':
     iterator = iterator_utils.get_iterator(**params)
 
     seq2seq_model = Model(iterator=iterator, hps=hps)
-    seq2seq_model.get_logits()
-    seq2seq_model.compute_loss()
-    seq2seq_model.optimize()
 
     num_epoch = 10
     epoch = 0
-    with tf.Session() as sess:
-        now = datetime.utcnow().strftime("%Y%m%d%H%M%S")
-        logdir = 'tf-log'
 
-        summary_writer = tf.summary.FileWriter("{}/run-{}".format(logdir, now))
+    train_session = tf.Session()
 
-        tf.tables_initializer().run()
-        tf.global_variables_initializer().run()
+    now = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    logdir = 'tf-log'
 
-        total_steps = 0
-        for epoch in range(num_epoch):
-            print('epoch ---- {} ---- epoch'.format(epoch))
-            iterator.initializer.run()
-            index = 0
-            while True:
-                try:
-                    loss, _ = sess.run([seq2seq_model.loss, seq2seq_model.update_step])
-                    if index % 10 == 0: print('epoch: {}, loss: {}'.format(epoch, loss))
-                    index += 1
+    summary_writer = tf.summary.FileWriter("{}/run-{}".format(logdir, now))
 
-                    if index % 50 == 0:
-                        l = sess.run(seq2seq_model.merged)
-                        summary_writer.add_summary(l, global_step=total_steps)
-                    total_steps += 1
-                except tf.errors.OutOfRangeError:
-                    break
+    train_session.run(tf.tables_initializer())
+    train_session.run(tf.global_variables_initializer())
+    train_session.run(seq2seq_model.iterator.initializer)
+
+    epoch = 0
+    max_epoch = 10
+    total_steps = 0
+    while epoch < max_epoch:
+        try:
+            _, loss, summary = seq2seq_model.train(sess=train_session)
+            print(loss)
+            total_steps += 1
+            if total_steps % 50 == 0: summary_writer.add_summary(summary, global_step=total_steps)
+
+        except tf.errors.OutOfRangeError:
+            epoch += 1
+            train_session.run(seq2seq_model.iterator)
+            continue
+
+    train_session.close()
