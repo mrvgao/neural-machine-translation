@@ -11,11 +11,11 @@ from data_utils import iterator_utils
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '4, 5, 6'
 
-src_vocab_size = 31
-tgt_vocab_size = 31
+src_vocab_size = 29  # 26 + 3
+tgt_vocab_size = 13  # 10 + 3
 
-src_embedding_size = 10
-tgt_embedding_size = 10
+src_embedding_size = 5
+tgt_embedding_size = 3
 
 dtype = tf.float32
 
@@ -36,6 +36,7 @@ class Model:
         encoder_outputs, encoder_state = self.build_encode()
         logits = self.build_decode(encoder_state)
 
+        self.label_hat_probabilities = tf.nn.softmax(logits)
         self.loss, self.summary = self.compute_loss(logits)
         self.update = self.optimize(self.loss)
 
@@ -130,15 +131,20 @@ class Model:
         return tensor.shape[time_axis].value or tf.shape(tensor)[time_axis]
 
     def train(self, sess):
-        return sess.run([self.update, self.loss, self.summary])
+        return sess.run([
+            self.update,
+            self.loss,
+            self.summary,
+            self.label_hat_probabilities,
+        ])
 
 
 if __name__ == '__main__':
     hps = Hyperpamamters(
-        learning_rate=1e-5,
+        learning_rate=1e-3,
         batch_size=128,
         max_gradient_norm=1,
-        num_units=10,
+        num_units=32,
         attention=True
     )
 
@@ -166,21 +172,32 @@ if __name__ == '__main__':
 
     train_session.run(tf.tables_initializer())
     train_session.run(tf.global_variables_initializer())
-    train_session.run(seq2seq_model.iterator.initializer)
 
     epoch = 0
-    max_epoch = 10
+    max_epoch = 100
     total_steps = 0
-    while epoch < max_epoch:
-        try:
-            _, loss, summary = seq2seq_model.train(sess=train_session)
-            print(loss)
-            total_steps += 1
-            if total_steps % 50 == 0: summary_writer.add_summary(summary, global_step=total_steps)
 
-        except tf.errors.OutOfRangeError:
-            epoch += 1
-            train_session.run(seq2seq_model.iterator)
-            continue
+    saver = tf.train.Saver()
 
-    train_session.close()
+    with train_session:
+        tf.tables_initializer().run()
+        tf.global_variables_initializer().run()
+        seq2seq_model.iterator.initializer.run()
+
+        while epoch < max_epoch:
+            print('epoch -- {} --- epoch'.format(epoch))
+            try:
+                _, loss, summary, label_hats = seq2seq_model.train(sess=train_session)
+                print(loss)
+                total_steps += 1
+                if total_steps % 50 == 0:
+                    summary_writer.add_summary(summary, global_step=total_steps)
+
+                if total_steps % 1000 == 0:
+                    saver.save(train_session, 'models/neural-translation-with-loss-{}-steps-{}'.format(loss, total_steps),
+                               global_step=total_steps)
+            except tf.errors.OutOfRangeError:
+                epoch += 1
+                train_session.run(seq2seq_model.iterator.initializer)
+                continue
+
