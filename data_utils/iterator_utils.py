@@ -38,12 +38,15 @@ def get_iterator(src_file, tgt_file, src_vocab_file, tgt_vocab_file, batch_size)
     # TODO<minquan>: Add similar size batched.
 
     source_target_dataset = source_target_dataset.map(
-        lambda src, tgt: (src, [sos_id] + tgt, tgt + [eos_id]),
+        lambda src, tgt: (src, tgt, tgt),
         num_threads=8
     )
 
     source_target_dataset = source_target_dataset.map(
-        lambda src, tgt_in, tgt_out: (src, tgt_in, tgt_out, tf.size(src), tf.size(tgt_in))
+        lambda src, tgt_in, tgt_out: (src,
+                                      tf.concat(([sos_id], tgt_in), axis=0),
+                                      tf.concat((tgt_out, [eos_id]), axis=0),
+                                      tf.size(src), tf.size(tgt_in) + 1)
     )
 
     source_target_dataset = source_target_dataset.shuffle(buffer_size=100000)
@@ -78,7 +81,7 @@ def get_iterator(src_file, tgt_file, src_vocab_file, tgt_vocab_file, batch_size)
                         target_length=target_length)
 
 
-if __name__ == '__main__':
+def iterator_mock():
     batch_input = get_iterator(
         src_file='source.txt', src_vocab_file='source_vocab.txt',
         tgt_file='target.txt', tgt_vocab_file='target_vocab.txt',
@@ -97,5 +100,30 @@ if __name__ == '__main__':
         print('target_input shape is {}'.format(np.array(target_input).shape))
         print('target_output shape is {}'.format(np.array(target_output).shape))
 
+        assert np.max(target_input) <= 25 + 3, np.max(target_input)
+        assert np.max(source) <= 25 + 3, np.max(source)
+        assert np.max(target_output) <= 25 + 3, np.max(target_output)
+
         print(src[:10])
         print(src_length[:10])
+
+        print('test done!')
+
+
+def lookup_mock():
+    src_table, tgt_table = table_utils.create_vocab_tables(src_vocab_file='source_vocab.txt',
+                                                           tgt_vocab_file='target_vocab.txt')
+
+    words = tf.constant(['.', '*', 'a', 'X', 'Z', 'Z'], dtype=tf.string)
+
+    table = tf.contrib.lookup.index_to_string_table_from_file('target_vocab.txt', default_value='unknow')
+    indices = tf.constant([0, 1, 28, 29], tf.int64)
+
+    with tf.Session() as sess:
+        tf.tables_initializer().run()
+        word_id = sess.run(table.lookup(indices))
+        print(word_id)
+
+
+if __name__ == '__main__':
+    iterator_mock()

@@ -9,7 +9,7 @@ def generate_char():
     minval = 'a'
     maxval = 'z'
     value = random.randint(ord(minval), ord(maxval))
-    return chr(value), chr(value).upper()
+    return chr(value), value
 
 
 def generate_seq(length=10):
@@ -39,4 +39,4 @@ if __name__ == '__main__':
     print(generate_char())
     print(generate_seq(10))
 
-    generate_batches_seq(1000000)
+    generate_batches_seq(100000)
