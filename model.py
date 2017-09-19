@@ -204,7 +204,7 @@ def main():
         learning_rate=1e-2,
         batch_size=1024,
         max_gradient_norm=2,
-        num_units=128,
+        num_units=28,
         attention=True,
         att_num_units=12,
         stack_layers=2,
