@@ -6,8 +6,8 @@ import random
 
 
 def generate_char():
-    minval = 'a'
-    maxval = 'z'
+    minval = '0'
+    maxval = '1'
     value = random.randint(ord(minval), ord(maxval))
     return chr(value), chr(value).upper()
 
