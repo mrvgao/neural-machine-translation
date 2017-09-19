@@ -63,21 +63,35 @@ class Model:
 
     def build_encode(self):
         # encoder_cell = rnn.BasicLSTMCell(num_units=self.hps.num_units)
-        encoder_cell = rnn.GRUCell(num_units=self.hps.num_units)
 
-        with tf.variable_scope('dynamic_seq2seq', dtype=dtype) as scope:
+        def lstm_cell():
+            return rnn.BasicLSTMCell(self.hps.num_units, state_is_tuple=False)
+
+        stacked_rnn = rnn.MultiRNNCell([lstm_cell() for _ in range(self.hps.stack_layers)], state_is_tuple=False)
+
+        encoder_cell = stacked_rnn
+
+        with tf.variable_scope('dynamic_seq2seq', reuse=None, dtype=dtype) as scope:
             encoder_outputs, encoder_state = tf.nn.dynamic_rnn(
                 cell=encoder_cell, inputs=self.encoder_emb_inp,
                 sequence_length=self.iterator.source_length,
                 time_major=True,
-                dtype=dtype
+                dtype=dtype,
             )
 
         return encoder_outputs, encoder_state
 
     def build_decoder_cell(self, encoder_state):
         # decoder_cell = rnn.BasicLSTMCell(num_units=self.hps.num_units)
-        decoder_cell = rnn.GRUCell(num_units=self.hps.num_units)
+
+        stack_rnn = rnn.MultiRNNCell(
+            [rnn.BasicLSTMCell(num_units=self.hps.num_units, state_is_tuple=False) for _ in
+             range(self.hps.stack_layers)],
+            state_is_tuple=False
+        )
+
+        decoder_cell = stack_rnn
+
         decoder_initial_state = encoder_state
 
         return decoder_cell, decoder_initial_state
