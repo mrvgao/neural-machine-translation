@@ -21,14 +21,14 @@ def generate_seq(length=10):
         source_seq += s
         target_seq += str(t)
 
-    return ' '.join(source_seq), ' '.join(target_seq)
+    return ' '.join(source_seq), ' '.join(target_seq)[::-1]
 
 
 def generate_batches_seq(batch_size=100000):
     source = open('source.txt', 'w')
     target = open('target.txt', 'w')
     for b in range(batch_size):
-        length = random.randint(1, 20)
+        length = random.randint(1, 5)
         s, t = generate_seq(length)
         source.write(s + '\n')
         target.write(t + '\n')

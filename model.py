@@ -14,7 +14,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '4, 5, 6'
 src_vocab_size = 29  # 26 + 3
 tgt_vocab_size = 13  # 10 + 3
 
-src_embedding_size = 6
+src_embedding_size = 5
 tgt_embedding_size = 3
 
 dtype = tf.float32
@@ -23,18 +23,19 @@ time_major = True
 
 Hyperpamamters = namedtuple('hps', ['learning_rate', 'batch_size',
                                     'max_gradient_norm', 'num_units',
-                                    'attention'])
+                                    'attention', 'att_num_units',
+                                    'stack_layers'])
 
 
 class Model:
-    def __init__(self, iterator, hps):
+    def __init__(self, iterator, _hps):
         self.iterator = iterator
         self.time_major = True
-        self.hps = hps
+        self.hps = _hps
         self.__build_embedding__()
 
         encoder_outputs, encoder_state = self.build_encode()
-        logits = self.build_decode(encoder_state)
+        logits = self.build_decode(encoder_outputs, encoder_state)
 
         self.label_hat_probabilities = tf.nn.softmax(logits)
         self.loss, self.summary = self.compute_loss(logits)
@@ -47,8 +48,8 @@ class Model:
             embedding_decoder = tf.get_variable(
                 'embedding_decoder', [tgt_vocab_size, tgt_embedding_size], dtype)
 
-        source = iterator.source
-        target_input = iterator.target_input
+        source = self.iterator.source
+        target_input = self.iterator.target_input
 
         self.encoder_emb_inp = tf.nn.embedding_lookup(embedding_encoder, source)
         self.decoder_emb_inp = tf.nn.embedding_lookup(embedding_decoder, target_input)
@@ -63,22 +64,56 @@ class Model:
         with tf.variable_scope('dynamic_seq2seq', dtype=dtype) as scope:
             encoder_outputs, encoder_state = tf.nn.dynamic_rnn(
                 cell=encoder_cell, inputs=self.encoder_emb_inp,
-                sequence_length=iterator.source_length,
+                sequence_length=self.iterator.source_length,
                 time_major=True,
                 dtype=dtype
             )
 
         return encoder_outputs, encoder_state
 
-    def build_decode(self, encoder_state):
-
+    def build_decoder_cell(self, encoder_state):
         decoder_cell = rnn.BasicLSTMCell(num_units=self.hps.num_units)
+        decoder_initial_state = encoder_state
+
+        return decoder_cell, decoder_initial_state
+
+    def build_attention_cell(self, encoder_outputs, encoder_states):
+        if self.time_major:
+            memory = tf.transpose(encoder_outputs, [1, 0, 2])
+
+        attention_mechanism = seq2seq.BahdanauAttention(
+            num_units=self.hps.att_num_units, memory=memory,
+            memory_sequence_length=self.iterator.target_length
+        )
+
+        cell = rnn.BasicLSTMCell(num_units=self.hps.num_units)
+
+        if self.hps.stack_layers > 1:
+            cell = rnn.MultiRNNCell([cell] * self.hps.stack_layers)
+
+        cell = seq2seq.AttentionWrapper(
+            cell, attention_mechanism,
+            attention_layer_size=self.hps.att_num_units, name='attention'
+        )
+
+        batch_size = tf.size(self.iterator.source_length)
+        decoder_initial_state = cell.zero_state(batch_size=batch_size, dtype=dtype).clone(
+            cell_state=encoder_states
+        )
+
+        return cell, decoder_initial_state
+
+    def build_decode(self, encoder_outputs, encoder_state):
+        if self.hps.attention:
+            decoder_cell, decoder_initial_state = self.build_attention_cell(encoder_outputs, encoder_state)
+        else:
+            decoder_cell, decoder_initial_state = self.build_decoder_cell(encoder_state)
+
+
         helper = seq2seq.TrainingHelper(
-            self.decoder_emb_inp, iterator.target_length, time_major=True
+            self.decoder_emb_inp, self.iterator.target_length, time_major=True
         )
         projection_layer = layers_core.Dense(tgt_vocab_size, use_bias=False)
-
-        decoder_initial_state = encoder_state
 
         decoder = seq2seq.BasicDecoder(
             decoder_cell, helper, decoder_initial_state, output_layer=projection_layer
@@ -103,17 +138,19 @@ class Model:
         if self.time_major:
             target_weights = tf.transpose(target_weights)
 
-        crossent = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=target_output, logits=logits)
-
         target_weights = tf.cast(target_weights, tf.float32)
 
-        loss = tf.reduce_sum(crossent * target_weights) / tf.to_float(self.hps.batch_size)
+        # crossent = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=target_output, logits=logits)
 
-        tf.summary.scalar(name='seq2seq-loss', tensor=loss)
+        # _loss = tf.reduce_sum(crossent * target_weights) / tf.to_float(self.hps.batch_size)
+        _loss = seq2seq.sequence_loss(logits=logits, targets=target_output,
+                                      weights=target_weights)
+
+        tf.summary.scalar(name='seq2seq-loss', tensor=_loss)
 
         summary_merged = tf.summary.merge_all()
 
-        return loss, summary_merged
+        return _loss, summary_merged
 
     def optimize(self, loss):
         params = tf.trainable_variables()
@@ -141,11 +178,13 @@ class Model:
 
 if __name__ == '__main__':
     hps = Hyperpamamters(
-        learning_rate=1e-3,
-        batch_size=128,
-        max_gradient_norm=1,
-        num_units=32,
-        attention=True
+        learning_rate=1e-2,
+        batch_size=10000,
+        max_gradient_norm=2,
+        num_units=16,
+        attention=True,
+        att_num_units=10,
+        stack_layers=1,
     )
 
     params = {
@@ -156,9 +195,9 @@ if __name__ == '__main__':
         'batch_size': hps.batch_size
     }
 
-    iterator = iterator_utils.get_iterator(**params)
+    _iterator = iterator_utils.get_iterator(**params)
 
-    seq2seq_model = Model(iterator=iterator, hps=hps)
+    seq2seq_model = Model(iterator=_iterator, _hps=hps)
 
     num_epoch = 10
     epoch = 0
@@ -188,10 +227,12 @@ if __name__ == '__main__':
             print('epoch -- {} --- epoch'.format(epoch))
             try:
                 _, loss, summary, label_hats = seq2seq_model.train(sess=train_session)
-                print(loss)
+                print("total_steps: {} loss: {}".format(total_steps, loss))
                 total_steps += 1
-                if total_steps % 50 == 0:
-                    summary_writer.add_summary(summary, global_step=total_steps)
+                summary_writer.add_summary(summary, global_step=total_steps)
+
+                if total_steps % 10 == 0:
+                    summary_writer.flush()
 
                 if total_steps % 1000 == 0:
                     saver.save(train_session, 'models/neural-translation-with-loss-{}-steps-{}'.format(loss, total_steps),
