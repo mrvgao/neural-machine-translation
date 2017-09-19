@@ -184,7 +184,7 @@ class Model:
 
 
 def main(argv):
-    FLAGS = tf.app.flags
+    assert len(argv) > 2, 'need add mark of this training.'
 
     hps = Hyperpamamters(
         learning_rate=1e-2,
@@ -215,7 +215,7 @@ def main(argv):
     now = datetime.utcnow().strftime("%Y%m%d%H%M%S")
     logdir = 'tf-log'
 
-    summary_writer = tf.summary.FileWriter("{}/run-{}-{}".format(logdir, now, FLAGS.mark))
+    summary_writer = tf.summary.FileWriter("{}/run-{}-{}".format(logdir, now, argv[2]))
 
     train_session.run(tf.tables_initializer())
     train_session.run(tf.global_variables_initializer())
