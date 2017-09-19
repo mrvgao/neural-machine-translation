@@ -7,7 +7,7 @@ import random
 
 def generate_char():
     minval = 'a'
-    maxval = 'b'
+    maxval = 'z'
     value = random.randint(ord(minval), ord(maxval))
     return chr(value), chr(value).upper()
 
