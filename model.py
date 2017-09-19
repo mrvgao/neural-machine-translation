@@ -183,7 +183,7 @@ class Model:
         ])
 
 
-if __name__ == '__main__':
+def main(argv):
     hps = Hyperpamamters(
         learning_rate=1e-2,
         batch_size=1024,
@@ -202,12 +202,11 @@ if __name__ == '__main__':
         'batch_size': hps.batch_size
     }
 
+    tf.app.flags.DEFINE_string('mark', None, 'tf-log mark')
+
     _iterator = iterator_utils.get_iterator(**params)
 
     seq2seq_model = Model(iterator=_iterator, _hps=hps)
-
-    num_epoch = 10
-    epoch = 0
 
     train_session = tf.Session()
 
@@ -249,3 +248,6 @@ if __name__ == '__main__':
                 train_session.run(seq2seq_model.iterator.initializer)
                 continue
 
+
+if __name__ == '__main__':
+    tf.app.run()
