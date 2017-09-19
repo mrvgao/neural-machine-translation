@@ -187,7 +187,7 @@ if __name__ == '__main__':
         batch_size=1024,
         max_gradient_norm=2,
         num_units=128,
-        attention=True,
+        attention=False,
         att_num_units=64,
         stack_layers=2,
     )
