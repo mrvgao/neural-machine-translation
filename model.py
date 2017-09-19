@@ -26,6 +26,9 @@ Hyperpamamters = namedtuple('hps', ['learning_rate', 'batch_size',
                                     'attention', 'att_num_units',
                                     'stack_layers'])
 
+FLAGS = tf.flags.FLAGS
+tf.flags.DEFINE_string('mark', "", 'summary mark')
+
 
 class Model:
     def __init__(self, iterator, _hps):
@@ -184,7 +187,6 @@ class Model:
 
 
 def main(argv):
-    FLAGS = tf.flags
 
     hps = Hyperpamamters(
         learning_rate=1e-2,
@@ -204,7 +206,6 @@ def main(argv):
         'batch_size': hps.batch_size
     }
 
-    FLAGS.DEFINE_string('mark', "", 'summary mark')
 
     _iterator = iterator_utils.get_iterator(**params)
 
@@ -215,7 +216,7 @@ def main(argv):
     now = datetime.utcnow().strftime("%Y%m%d%H%M%S")
     logdir = 'tf-log'
 
-    summary_writer = tf.summary.FileWriter("{}/run-{}-{}".format(logdir, now, FLAGS.FLAGS.mark))
+    summary_writer = tf.summary.FileWriter("{}/run-{}-{}".format(logdir, now, FLAGS['mark']))
 
     train_session.run(tf.tables_initializer())
     train_session.run(tf.global_variables_initializer())
