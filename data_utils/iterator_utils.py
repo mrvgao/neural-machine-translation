@@ -49,6 +49,7 @@ def get_iterator(src_file, tgt_file, src_vocab_file, tgt_vocab_file, batch_size)
                                       tf.size(src), tf.size(tgt_in) + 1)
     )
 
+    source_target_dataset = source_target_dataset.repeat(count=50)
     source_target_dataset = source_target_dataset.shuffle(buffer_size=100000)
 
     batched_dataset = source_target_dataset.padded_batch(
