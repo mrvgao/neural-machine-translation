@@ -59,7 +59,8 @@ class Model:
             self.decoder_emb_inp = tf.transpose(self.decoder_emb_inp, [1, 0, 2])
 
     def build_encode(self):
-        encoder_cell = rnn.BasicLSTMCell(num_units=self.hps.num_units)
+        # encoder_cell = rnn.BasicLSTMCell(num_units=self.hps.num_units)
+        encoder_cell = rnn.GRUCell(num_units=self.hps.num_units)
 
         with tf.variable_scope('dynamic_seq2seq', dtype=dtype) as scope:
             encoder_outputs, encoder_state = tf.nn.dynamic_rnn(
@@ -72,7 +73,8 @@ class Model:
         return encoder_outputs, encoder_state
 
     def build_decoder_cell(self, encoder_state):
-        decoder_cell = rnn.BasicLSTMCell(num_units=self.hps.num_units)
+        # decoder_cell = rnn.BasicLSTMCell(num_units=self.hps.num_units)
+        decoder_cell = rnn.GRUCell(num_units=self.hps.num_units)
         decoder_initial_state = encoder_state
 
         return decoder_cell, decoder_initial_state
