@@ -199,7 +199,7 @@ class Model:
         ])
 
 
-def main():
+def main(_):
     hps = Hyperpamamters(
         learning_rate=1e-2,
         batch_size=1024,
@@ -217,7 +217,6 @@ def main():
         'tgt_vocab_file': 'data_utils/target_vocab.txt',
         'batch_size': hps.batch_size
     }
-
 
     _iterator = iterator_utils.get_iterator(**params)
 
