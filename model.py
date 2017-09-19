@@ -28,6 +28,9 @@ Hyperpamamters = namedtuple('hps', ['learning_rate', 'batch_size',
 
 FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string('mark', "", 'summary mark')
+tf.flags.DEFINE_boolean('attention', False, 'if need attention')
+tf.flags.DEFINE_integer('stack_layers', 1, 'stacked layers num')
+tf.flags.DEFINE_float('learning_rate', 1e-2, 'learning rate')
 
 
 class Model:
@@ -204,13 +207,13 @@ class Model:
 
 def main(_):
     hps = Hyperpamamters(
-        learning_rate=1e-2,
+        learning_rate=FLAGS.learning_rate,
         batch_size=1024,
         max_gradient_norm=2,
         num_units=256,
-        attention=True,
+        attention=FLAGS.attention,
         att_num_units=256,
-        stack_layers=3,
+        stack_layers=FLAGS.stack_layers,
     )
 
     params = {
