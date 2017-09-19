@@ -21,7 +21,7 @@ def generate_seq(length=10):
         source_seq += s
         target_seq += str(t)
 
-    return ' '.join(source_seq), ' '.join(target_seq)[::-1]
+    return ' '.join(source_seq), ' '.join(target_seq)
 
 
 def generate_batches_seq(batch_size=100000):
