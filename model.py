@@ -107,9 +107,8 @@ class Model:
             memory_sequence_length=self.iterator.target_length
         )
 
-        cell = rnn.BasicLSTMCell(num_units=self.hps.num_units)
-
-        # cell = rnn.MultiRNNCell([cell] * self.hps.stack_layers)
+        cell = rnn.MultiRNNCell([rnn.BasicLSTMCell(num_units=self.hps.num_units, state_is_tuple=False)
+                                 for _ in range(self.hps.stack_layers)], state_is_tuple=False)
 
         cell = seq2seq.AttentionWrapper(
             cell, attention_mechanism,
@@ -200,15 +199,14 @@ class Model:
         ])
 
 
-def main(argv):
-
+def main():
     hps = Hyperpamamters(
         learning_rate=1e-2,
         batch_size=1024,
         max_gradient_norm=2,
         num_units=128,
-        attention=False,
-        att_num_units=64,
+        attention=True,
+        att_num_units=12,
         stack_layers=2,
     )
 
