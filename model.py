@@ -75,6 +75,8 @@ class Model:
 
         stacked_rnn = rnn.MultiRNNCell([lstm_cell() for _ in range(self.hps.stack_layers)], state_is_tuple=False)
 
+        stacked_rnn = rnn.DropoutWrapper(cell=stacked_rnn, input_keep_prob=0.8)
+
         encoder_cell = stacked_rnn
 
         with tf.variable_scope('dynamic_seq2seq', reuse=None, dtype=dtype) as scope:
@@ -138,7 +140,7 @@ class Model:
         helper = seq2seq.TrainingHelper(
             self.decoder_emb_inp, self.iterator.target_length, time_major=True
         )
-        projection_layer = layers_core.Dense(tgt_vocab_size, use_bias=False)
+        projection_layer = layers_core.Dense(tgt_vocab_size, use_bias=True)
 
         decoder = seq2seq.BasicDecoder(
             decoder_cell, helper, decoder_initial_state, output_layer=projection_layer
@@ -180,17 +182,15 @@ class Model:
     def optimize(self, loss):
         params = tf.trainable_variables()
         gradients = tf.gradients(loss, params)
-        # clipped_gradients, _ = tf.clip_by_global_norm(gradients, self.hps.max_gradient_norm)
+        clipped_gradients, _ = tf.clip_by_global_norm(gradients, self.hps.max_gradient_norm)
 
         global_step = tf.Variable(0, trainable=True)
         starter_learning_rate = self.hps.learning_rate
         learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
                                                    1000, 0.9, staircase=True)
-        # optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
-        #
-        # op = optimizer.apply_gradients(zip(clipped_gradients, params))
+        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 
-        op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
+        op = optimizer.apply_gradients(zip(clipped_gradients, params))
 
         return op
 
