@@ -184,7 +184,7 @@ class Model:
 
 if __name__ == '__main__':
     hps = Hyperpamamters(
-        learning_rate=1e-2,
+        learning_rate=1e-3,
         batch_size=1024,
         max_gradient_norm=2,
         num_units=128,
