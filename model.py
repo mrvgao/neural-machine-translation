@@ -184,7 +184,7 @@ class Model:
 
 
 def main(argv):
-    assert len(argv) > 2, 'need add mark of this training.'
+    FLAGS = tf.flags
 
     hps = Hyperpamamters(
         learning_rate=1e-2,
@@ -204,7 +204,7 @@ def main(argv):
         'batch_size': hps.batch_size
     }
 
-    tf.app.flags.DEFINE_string('mark', None, 'tf-log mark')
+    FLAGS.DEFINE_string('mark', "", 'summary mark')
 
     _iterator = iterator_utils.get_iterator(**params)
 
@@ -215,7 +215,7 @@ def main(argv):
     now = datetime.utcnow().strftime("%Y%m%d%H%M%S")
     logdir = 'tf-log'
 
-    summary_writer = tf.summary.FileWriter("{}/run-{}-{}".format(logdir, now, argv[2]))
+    summary_writer = tf.summary.FileWriter("{}/run-{}-{}".format(logdir, now, FLAGS.FLAGS.mark))
 
     train_session.run(tf.tables_initializer())
     train_session.run(tf.global_variables_initializer())
