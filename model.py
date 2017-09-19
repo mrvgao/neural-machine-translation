@@ -180,15 +180,17 @@ class Model:
     def optimize(self, loss):
         params = tf.trainable_variables()
         gradients = tf.gradients(loss, params)
-        clipped_gradients, _ = tf.clip_by_global_norm(gradients, self.hps.max_gradient_norm)
+        # clipped_gradients, _ = tf.clip_by_global_norm(gradients, self.hps.max_gradient_norm)
 
         global_step = tf.Variable(0, trainable=True)
         starter_learning_rate = self.hps.learning_rate
         learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
                                                    1000, 0.9, staircase=True)
-        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+        # optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+        #
+        # op = optimizer.apply_gradients(zip(clipped_gradients, params))
 
-        op = optimizer.apply_gradients(zip(clipped_gradients, params))
+        op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
 
         return op
 
