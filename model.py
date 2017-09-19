@@ -54,8 +54,11 @@ class Model:
         source = self.iterator.source
         target_input = self.iterator.target_input
 
-        self.encoder_emb_inp = tf.nn.embedding_lookup(embedding_encoder, source)
-        self.decoder_emb_inp = tf.nn.embedding_lookup(embedding_decoder, target_input)
+        # self.encoder_emb_inp = tf.nn.embedding_lookup(embedding_encoder, source)
+        # self.decoder_emb_inp = tf.nn.embedding_lookup(embedding_decoder, target_input)
+
+        self.encoder_emb_inp = tf.one_hot(source, depth=src_vocab_size)
+        self.decoder_emb_inp = tf.one_hot(target_input, depth=tgt_vocab_size)
 
         if self.time_major:
             self.encoder_emb_inp = tf.transpose(self.encoder_emb_inp, [1, 0, 2])
