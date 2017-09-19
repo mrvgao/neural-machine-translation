@@ -207,10 +207,10 @@ def main(_):
         learning_rate=1e-2,
         batch_size=1024,
         max_gradient_norm=2,
-        num_units=28,
+        num_units=256,
         attention=True,
-        att_num_units=12,
-        stack_layers=2,
+        att_num_units=256,
+        stack_layers=3,
     )
 
     params = {
