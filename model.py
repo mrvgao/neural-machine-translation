@@ -78,6 +78,8 @@ class Model:
         return decoder_cell, decoder_initial_state
 
     def build_attention_cell(self, encoder_outputs, encoder_states):
+        memory = encoder_outputs
+
         if self.time_major:
             memory = tf.transpose(encoder_outputs, [1, 0, 2])
 
@@ -185,9 +187,9 @@ if __name__ == '__main__':
         learning_rate=1e-2,
         batch_size=1024,
         max_gradient_norm=2,
-        num_units=16,
+        num_units=128,
         attention=True,
-        att_num_units=10,
+        att_num_units=64,
         stack_layers=1,
     )
 
