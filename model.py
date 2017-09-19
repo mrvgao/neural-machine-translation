@@ -11,8 +11,8 @@ from data_utils import iterator_utils
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '4, 5, 6'
 
-src_vocab_size = 29  # 26 + 3
-tgt_vocab_size = 13  # 10 + 3
+src_vocab_size = 8  # 5 + 3
+tgt_vocab_size = 8  # 5 + 3
 
 src_embedding_size = 5
 tgt_embedding_size = 3
@@ -90,8 +90,7 @@ class Model:
 
         cell = rnn.BasicLSTMCell(num_units=self.hps.num_units)
 
-        if self.hps.stack_layers > 1:
-            cell = rnn.MultiRNNCell([cell] * self.hps.stack_layers)
+        # cell = rnn.MultiRNNCell([cell] * self.hps.stack_layers)
 
         cell = seq2seq.AttentionWrapper(
             cell, attention_mechanism,
@@ -99,6 +98,7 @@ class Model:
         )
 
         batch_size = tf.size(self.iterator.source_length)
+
         decoder_initial_state = cell.zero_state(batch_size=batch_size, dtype=dtype).clone(
             cell_state=encoder_states
         )
@@ -110,7 +110,6 @@ class Model:
             decoder_cell, decoder_initial_state = self.build_attention_cell(encoder_outputs, encoder_state)
         else:
             decoder_cell, decoder_initial_state = self.build_decoder_cell(encoder_state)
-
 
         helper = seq2seq.TrainingHelper(
             self.decoder_emb_inp, self.iterator.target_length, time_major=True
@@ -190,7 +189,7 @@ if __name__ == '__main__':
         num_units=128,
         attention=True,
         att_num_units=64,
-        stack_layers=1,
+        stack_layers=2,
     )
 
     params = {

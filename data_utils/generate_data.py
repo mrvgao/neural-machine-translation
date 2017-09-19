@@ -7,9 +7,9 @@ import random
 
 def generate_char():
     minval = 'a'
-    maxval = 'z'
+    maxval = 'e'
     value = random.randint(ord(minval), ord(maxval))
-    return chr(value), value
+    return chr(value), value - ord(minval)
 
 
 def generate_seq(length=10):
