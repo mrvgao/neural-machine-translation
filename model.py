@@ -11,11 +11,11 @@ from data_utils import iterator_utils
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '4, 5, 6'
 
-src_vocab_size = 8  # 5 + 3
-tgt_vocab_size = 8  # 5 + 3
+src_vocab_size = 29
+tgt_vocab_size = 29
 
-src_embedding_size = 1
-tgt_embedding_size = 1
+src_embedding_size = 2
+tgt_embedding_size = 2
 
 dtype = tf.float32
 
