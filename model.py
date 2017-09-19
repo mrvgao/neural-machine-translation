@@ -11,8 +11,8 @@ from data_utils import iterator_utils
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '4, 5, 6'
 
-src_vocab_size = 3
-tgt_vocab_size = 3
+src_vocab_size = 5
+tgt_vocab_size = 5
 
 src_embedding_size = 1
 tgt_embedding_size = 1
