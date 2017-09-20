@@ -1,4 +1,3 @@
-import os
 from collections import namedtuple
 from datetime import datetime
 
@@ -8,11 +7,12 @@ from tensorflow.contrib import seq2seq
 from tensorflow.python.layers import core as layers_core
 
 from data_utils import iterator_utils
+import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '4, 5, 6'
 
-src_vocab_size = 5
-tgt_vocab_size = 5
+src_vocab_size = 29
+tgt_vocab_size = 29
 
 src_embedding_size = 1
 tgt_embedding_size = 1
@@ -31,6 +31,7 @@ tf.flags.DEFINE_string('mark', "", 'summary mark')
 tf.flags.DEFINE_boolean('attention', False, 'if need attention')
 tf.flags.DEFINE_integer('stack_layers', 1, 'stacked layers num')
 tf.flags.DEFINE_float('learning_rate', 1e-2, 'learning rate')
+tf.flags.DEFINE_integer('epoch', 100, 'learning epochs')
 
 
 class Model:
@@ -60,20 +61,23 @@ class Model:
         # self.encoder_emb_inp = tf.nn.embedding_lookup(embedding_encoder, source)
         # self.decoder_emb_inp = tf.nn.embedding_lookup(embedding_decoder, target_input)
 
-        self.encoder_emb_inp = tf.one_hot(source, depth=src_vocab_size)
-        self.decoder_emb_inp = tf.one_hot(target_input, depth=tgt_vocab_size)
+        self.encoder_emb_inp = tf.one_hot(source, depth=src_vocab_size + tgt_vocab_size - 3)
+        self.decoder_emb_inp = tf.one_hot(target_input, depth=tgt_vocab_size + src_vocab_size - 3)
 
         if self.time_major:
             self.encoder_emb_inp = tf.transpose(self.encoder_emb_inp, [1, 0, 2])
             self.decoder_emb_inp = tf.transpose(self.decoder_emb_inp, [1, 0, 2])
 
+    def build_rnn_cell(self, cell_type):
+        if cell_type == 'lstm':
+            return rnn.BasicLSTMCell(num_units=self.hps.num_units)
+        elif cell_type == 'gru':
+            return rnn.GRUCell(num_units=self.hps.num_units)
+        else:
+            raise TypeError('unsupported type of rnn cell [lstm, gru]')
+
     def build_encode(self):
-        # encoder_cell = rnn.BasicLSTMCell(num_units=self.hps.num_units)
-
-        def lstm_cell():
-            return rnn.BasicLSTMCell(self.hps.num_units, state_is_tuple=False)
-
-        stacked_rnn = rnn.MultiRNNCell([lstm_cell() for _ in range(self.hps.stack_layers)], state_is_tuple=False)
+        stacked_rnn = rnn.MultiRNNCell([self.build_rnn_cell('lstm') for _ in range(self.hps.stack_layers)])
 
         stacked_rnn = rnn.DropoutWrapper(cell=stacked_rnn, input_keep_prob=0.8)
 
@@ -90,13 +94,9 @@ class Model:
         return encoder_outputs, encoder_state
 
     def build_decoder_cell(self, encoder_state):
-        # decoder_cell = rnn.BasicLSTMCell(num_units=self.hps.num_units)
 
         stack_rnn = rnn.MultiRNNCell(
-            [rnn.BasicLSTMCell(num_units=self.hps.num_units, state_is_tuple=False) for _ in
-             range(self.hps.stack_layers)],
-            state_is_tuple=False
-        )
+            [self.build_rnn_cell('lstm') for _ in range(self.hps.stack_layers)])
 
         decoder_cell = stack_rnn
 
@@ -110,13 +110,13 @@ class Model:
         if self.time_major:
             memory = tf.transpose(encoder_outputs, [1, 0, 2])
 
-        attention_mechanism = seq2seq.BahdanauAttention(
+        attention_mechanism = seq2seq.LuongAttention(
             num_units=self.hps.att_num_units, memory=memory,
             memory_sequence_length=self.iterator.target_length
         )
 
-        cell = rnn.MultiRNNCell([rnn.BasicLSTMCell(num_units=self.hps.num_units, state_is_tuple=False)
-                                 for _ in range(self.hps.stack_layers)], state_is_tuple=False)
+        cell = rnn.MultiRNNCell(
+            [self.build_rnn_cell('lstm') for _ in range(self.hps.stack_layers)])
 
         cell = seq2seq.AttentionWrapper(
             cell, attention_mechanism,
@@ -187,7 +187,7 @@ class Model:
         global_step = tf.Variable(0, trainable=True)
         starter_learning_rate = self.hps.learning_rate
         learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
-                                                   1000, 0.9, staircase=True)
+                                                   500, 0.95, staircase=True)
         optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 
         op = optimizer.apply_gradients(zip(clipped_gradients, params))
@@ -210,11 +210,11 @@ class Model:
 def main(_):
     hps = Hyperpamamters(
         learning_rate=FLAGS.learning_rate,
-        batch_size=1024,
+        batch_size=128,
         max_gradient_norm=2,
-        num_units=256,
+        num_units=100,
         attention=FLAGS.attention,
-        att_num_units=256,
+        att_num_units=100,
         stack_layers=FLAGS.stack_layers,
     )
 
@@ -241,7 +241,7 @@ def main(_):
     train_session.run(tf.global_variables_initializer())
 
     epoch = 0
-    max_epoch = 100
+    max_epoch = FLAGS.epoch
     total_steps = 0
 
     saver = tf.train.Saver()

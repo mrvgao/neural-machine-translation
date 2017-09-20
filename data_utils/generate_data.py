@@ -6,8 +6,8 @@ import random
 
 
 def generate_char():
-    minval = '0'
-    maxval = '1'
+    minval = 'a'
+    maxval = 'z'
     value = random.randint(ord(minval), ord(maxval))
     return chr(value), chr(value).upper()
 
@@ -21,8 +21,7 @@ def generate_seq(length=10):
         source_seq += s
         target_seq += str(t)
 
-    # return ' '.join(source_seq), ' '.join(target_seq)
-    return ' '.join(source_seq), source_seq[-1]
+    return ' '.join(source_seq), ' '.join(target_seq)
 
 
 def generate_batches_seq(batch_size=100000):
@@ -40,4 +39,4 @@ if __name__ == '__main__':
     print(generate_char())
     print(generate_seq(10))
 
-    generate_batches_seq(100000)
+    generate_batches_seq(10000)
