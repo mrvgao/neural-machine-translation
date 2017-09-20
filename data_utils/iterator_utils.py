@@ -15,7 +15,10 @@ eos_id = 2
 
 BatchedInput = collections.namedtuple(
     'BatchedInput', ['target_input', 'target_length', 'source', 'source_length',
-                     'initializer', 'target_output'])
+                     'initializer', 'target_output', 'source_each_timestep',
+                     'target_each_timestep'])
+
+each_timestep_dimension = 1
 
 
 def get_iterator(src_file, tgt_file, src_vocab_file, tgt_vocab_file, batch_size):
@@ -28,7 +31,7 @@ def get_iterator(src_file, tgt_file, src_vocab_file, tgt_vocab_file, batch_size)
     src_table, tgt_table = table_utils.create_vocab_tables(src_vocab_file=src_file, tgt_vocab_file=tgt_file)
 
     source_dataset = source_dataset.map(lambda string: tf.string_split([string]).values)
-    source_dataset = source_dataset.map(lambda words,: tf.cast(src_table.lookup(words), tf.int32))
+    source_dataset = source_dataset.map(lambda words: tf.cast(src_table.lookup(words), tf.int32))
 
     target_dataset = target_dataset.map(lambda string: tf.string_split([string]).values)
     target_dataset = target_dataset.map(lambda words: tf.cast(tgt_table.lookup(words), tf.int32))
@@ -46,11 +49,14 @@ def get_iterator(src_file, tgt_file, src_vocab_file, tgt_vocab_file, batch_size)
         lambda src, tgt_in, tgt_out: (src,
                                       tf.concat(([sos_id], tgt_in), axis=0),
                                       tf.concat((tgt_out, [eos_id]), axis=0),
-                                      tf.size(src), tf.size(tgt_in) + 1)
+                                      tf.size(src), tf.size(tgt_in) + 1,
+                                      tf.reshape(src, shape=(tf.size(src), -1)),
+                                      tf.reshape(tgt_out, shape=(tf.size(tgt_out), -1)),
+                                      ),
     )
 
-    source_target_dataset = source_target_dataset.repeat(count=50)
-    source_target_dataset = source_target_dataset.shuffle(buffer_size=100000)
+    # source_target_dataset = source_target_dataset.shuffle(buffer_size=4)
+    # source_target_dataset = source_target_dataset.repeat(count=50)
 
     batched_dataset = source_target_dataset.padded_batch(
         batch_size,
@@ -60,6 +66,8 @@ def get_iterator(src_file, tgt_file, src_vocab_file, tgt_vocab_file, batch_size)
             tf.TensorShape([None]),
             tf.TensorShape([]),
             tf.TensorShape([]),
+            tf.TensorShape([None, each_timestep_dimension]),
+            tf.TensorShape([None, each_timestep_dimension]),
         ),
 
         padding_values=(
@@ -67,19 +75,26 @@ def get_iterator(src_file, tgt_file, src_vocab_file, tgt_vocab_file, batch_size)
             eos_id,
             eos_id,
             0,
-            0)
+            0,
+            eos_id,
+            eos_id,
+        )
     )
 
     batched_iterator = batched_dataset.make_initializable_iterator()
 
-    source, target_input, target_output, source_length, target_length = batched_iterator.get_next()
+    source, target_input, target_output, source_length, \
+        target_length, src_each_time, tgt_each_time = batched_iterator.get_next()
 
     return BatchedInput(initializer=batched_iterator.initializer,
                         source=source,
                         source_length=source_length,
                         target_input=target_input,
                         target_output=target_output,
-                        target_length=target_length)
+                        target_length=target_length,
+                        source_each_timestep=src_each_time,
+                        target_each_timestep=tgt_each_time,
+                        )
 
 
 def iterator_mock():
