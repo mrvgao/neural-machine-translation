@@ -1,3 +1,4 @@
+import os
 from collections import namedtuple
 from datetime import datetime
 
@@ -7,7 +8,6 @@ from tensorflow.contrib import seq2seq
 from tensorflow.python.layers import core as layers_core
 
 from data_utils import iterator_utils
-import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '4, 5, 6'
 
@@ -30,8 +30,8 @@ FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string('mark', "", 'summary mark')
 tf.flags.DEFINE_boolean('attention', False, 'if need attention')
 tf.flags.DEFINE_integer('stack_layers', 1, 'stacked layers num')
-tf.flags.DEFINE_float('learning_rate', 1e-2, 'learning rate')
-tf.flags.DEFINE_integer('epoch', 100, 'learning epochs')
+tf.flags.DEFINE_float('learning_rate', 1e-1, 'learning rate')
+tf.flags.DEFINE_integer('epoch', 500, 'learning epochs')
 
 
 class Model:
@@ -45,8 +45,10 @@ class Model:
         logits = self.build_decode(encoder_outputs, encoder_state)
 
         self.label_hat_probabilities = tf.nn.softmax(logits)
-        self.loss, self.summary = self.compute_loss(logits)
+        self.loss = self.compute_loss(logits)
         self.update = self.optimize(self.loss)
+
+        self.summary = self.merge_summary()
 
     def __build_embedding__(self):
         with tf.variable_scope('embedding'):
@@ -175,28 +177,32 @@ class Model:
 
         tf.summary.scalar(name='seq2seq-loss', tensor=_loss)
 
-        summary_merged = tf.summary.merge_all()
-
-        return _loss, summary_merged
+        return _loss
 
     def optimize(self, loss):
         params = tf.trainable_variables()
         gradients = tf.gradients(loss, params)
         clipped_gradients, _ = tf.clip_by_global_norm(gradients, self.hps.max_gradient_norm)
 
-        global_step = tf.Variable(0, trainable=True)
+        global_step = tf.Variable(0, trainable=False)
         starter_learning_rate = self.hps.learning_rate
         learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
-                                                   500, 0.95, staircase=True)
+                                                   500, 0.90, staircase=False)
+
+        tf.summary.scalar('global_steps', global_step)
+        tf.summary.scalar('learning_rate', learning_rate)
         optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 
-        op = optimizer.apply_gradients(zip(clipped_gradients, params))
+        op = optimizer.apply_gradients(zip(clipped_gradients, params), global_step=global_step)
 
         return op
 
     def get_max_time(self, tensor):
         time_axis = 0 if self.time_major else 1
         return tensor.shape[time_axis].value or tf.shape(tensor)[time_axis]
+
+    def merge_summary(self):
+        return tf.summary.merge_all()
 
     def train(self, sess):
         return sess.run([
