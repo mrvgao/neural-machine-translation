@@ -9,7 +9,7 @@ from tensorflow.python.layers import core as layers_core
 
 from data_utils import iterator_utils
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '4, 5, 6'
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 
 src_vocab_size = 29
 tgt_vocab_size = 29
