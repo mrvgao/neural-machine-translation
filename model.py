@@ -30,7 +30,7 @@ FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string('mark', "", 'summary mark')
 tf.flags.DEFINE_boolean('attention', False, 'if need attention')
 tf.flags.DEFINE_integer('stack_layers', 1, 'stacked layers num')
-tf.flags.DEFINE_float('learning_rate', 1e-1, 'learning rate')
+tf.flags.DEFINE_float('learning_rate', 5e-2, 'learning rate')
 tf.flags.DEFINE_integer('epoch', 500, 'learning epochs')
 
 
