@@ -1,27 +1,23 @@
-## Neural Machine Translation Mini Experiment.
+## Neural Machine Translation
 
+Make a Machine Translation Framework.
 
-Make a mini test of neural machine translation.
+Machine Translation, Image Caption, Text Summary, Music Generation, ChatBot all could be trained by this model.
 
 Environment:
 
 Tensorflow: >= 1.2
 
-Experiment Points:
+Framework Points:
 
-+ Seq2Seq in tensorflow
++ Seq2Seq by tensorflow
     + Encoder
     + Decoder
     + Optimizer
+    + weighted crossentropy
 + Attention Model in tensorflow.
-
++ Stack based Model
 + Data Pipeline in tensorflow.
-
-
-The experiment language:
-
-change a sequence on english characters into a sequence
- of their ASCII codes.
 
  e.g:
 
