@@ -28,10 +28,11 @@ Hyperpamamters = namedtuple('hps', ['learning_rate', 'batch_size',
 
 FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string('mark', "", 'summary mark')
-tf.flags.DEFINE_boolean('attention', False, 'if need attention')
+tf.flags.DEFINE_boolean('attention', True, 'if need attention')
 tf.flags.DEFINE_integer('stack_layers', 1, 'stacked layers num')
-tf.flags.DEFINE_float('learning_rate', 1e-1, 'learning rate')
+tf.flags.DEFINE_float('learning_rate', 1e-2, 'learning rate')
 tf.flags.DEFINE_integer('epoch', 1000, 'learning epochs')
+tf.flags.DEFINE_string('cell_type', 'gru', 'cell type of encoder and decoder')
 
 
 class Model:
@@ -79,7 +80,7 @@ class Model:
             raise TypeError('unsupported type of rnn cell [lstm, gru]')
 
     def build_encode(self):
-        stacked_rnn = rnn.MultiRNNCell([self.build_rnn_cell('lstm') for _ in range(self.hps.stack_layers)])
+        stacked_rnn = rnn.MultiRNNCell([self.build_rnn_cell(FLAGS.cell_type) for _ in range(self.hps.stack_layers)])
 
         stacked_rnn = rnn.DropoutWrapper(cell=stacked_rnn, input_keep_prob=0.8)
 
@@ -98,7 +99,7 @@ class Model:
     def build_decoder_cell(self, encoder_state):
 
         stack_rnn = rnn.MultiRNNCell(
-            [self.build_rnn_cell('lstm') for _ in range(self.hps.stack_layers)])
+            [self.build_rnn_cell(FLAGS.cell_type) for _ in range(self.hps.stack_layers)])
 
         decoder_cell = stack_rnn
 
@@ -118,7 +119,7 @@ class Model:
         )
 
         cell = rnn.MultiRNNCell(
-            [self.build_rnn_cell('lstm') for _ in range(self.hps.stack_layers)])
+            [self.build_rnn_cell(FLAGS.cell_type) for _ in range(self.hps.stack_layers)])
 
         cell = seq2seq.AttentionWrapper(
             cell, attention_mechanism,
@@ -218,9 +219,9 @@ def main(_):
         learning_rate=FLAGS.learning_rate,
         batch_size=128,
         max_gradient_norm=1,
-        num_units=100,
+        num_units=200,
         attention=FLAGS.attention,
-        att_num_units=100,
+        att_num_units=200,
         stack_layers=FLAGS.stack_layers,
     )
 
