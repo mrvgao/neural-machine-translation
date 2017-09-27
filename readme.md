@@ -21,7 +21,7 @@ Framework Points:
 
  e.g:
 
- 'abc' ==> 'CBA'
+ '知识就是力量' ==> 'Knowledge is power'
 
 
 
