@@ -29,10 +29,10 @@ Hyperpamamters = namedtuple('hps', ['learning_rate', 'batch_size',
 FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string('mark', "", 'summary mark')
 tf.flags.DEFINE_boolean('attention', True, 'if need attention')
-tf.flags.DEFINE_integer('stack_layers', 1, 'stacked layers num')
+tf.flags.DEFINE_integer('stack_layers', 2, 'stacked layers num')
 tf.flags.DEFINE_float('learning_rate', 1e-2, 'learning rate')
 tf.flags.DEFINE_integer('epoch', 1000, 'learning epochs')
-tf.flags.DEFINE_string('cell_type', 'gru', 'cell type of encoder and decoder')
+tf.flags.DEFINE_string('cell_type', 'lstm', 'cell type of encoder and decoder')
 
 
 class Model:
@@ -219,9 +219,9 @@ def main(_):
         learning_rate=FLAGS.learning_rate,
         batch_size=128,
         max_gradient_norm=1,
-        num_units=200,
+        num_units=400,
         attention=FLAGS.attention,
-        att_num_units=200,
+        att_num_units=400,
         stack_layers=FLAGS.stack_layers,
     )
 
