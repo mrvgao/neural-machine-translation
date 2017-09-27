@@ -21,7 +21,7 @@ def generate_seq(length=10):
         source_seq += s
         target_seq += str(t)
 
-    return ' '.join(source_seq), ' '.join(target_seq)
+    return ' '.join(source_seq), ' '.join(target_seq[::-1])
 
 
 def generate_batches_seq(batch_size=100000):
@@ -39,4 +39,4 @@ if __name__ == '__main__':
     print(generate_char())
     print(generate_seq(10))
 
-    generate_batches_seq(10000)
+    generate_batches_seq(100000)

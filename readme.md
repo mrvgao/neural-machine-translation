@@ -25,7 +25,7 @@ change a sequence on english characters into a sequence
 
  e.g:
 
- 'abcdef' ==> '979899100101102'
+ 'abc' ==> 'CBA'
 
 
 
