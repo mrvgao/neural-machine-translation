@@ -29,7 +29,6 @@ Framework Points:
 
 TO DO:
 
-- [ ] Sampled Softmax
 - [ ] a convenient GUI
 - [ ] CNN based Encoder.
 
